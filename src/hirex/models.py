@@ -37,8 +37,7 @@ class CandidateProfile(BaseModel):
     )
 
     @field_validator("skills", "preferred_locations", "industries", mode="before")
-    @classmethod
-    def _strip_values(cls, value: Optional[List[str]]) -> Optional[List[str]]:
+    def _strip_values(value: Optional[List[str]]) -> Optional[List[str]]:
         if value is None:
             return value
         if isinstance(value, list):
@@ -88,8 +87,7 @@ class JobPosting(BaseModel):
     )
 
     @field_validator("required_skills", "nice_to_have_skills", "industries", mode="before")
-    @classmethod
-    def _strip_and_dedupe(cls, values: Optional[List[str]]) -> Optional[List[str]]:
+    def _strip_and_dedupe(values: Optional[List[str]]) -> Optional[List[str]]:
         if values is None:
             return None
         if not isinstance(values, list):
@@ -106,9 +104,8 @@ class JobPosting(BaseModel):
         return ordered_unique
 
     @field_validator("salary_max")
-    @classmethod
     def _ensure_salary_range(
-        cls, salary_max: Optional[int], info: ValidationInfo
+        salary_max: Optional[int], info: ValidationInfo
     ) -> Optional[int]:
         salary_min = info.data.get("salary_min") if info.data else None
         if salary_max is not None and salary_min is not None:
