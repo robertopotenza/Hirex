@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
 
 class CandidateProfile(BaseModel):
@@ -36,9 +36,14 @@ class CandidateProfile(BaseModel):
         description="Industries the candidate has prior experience in",
     )
 
-    @validator("skills", "preferred_locations", "industries", each_item=True)
-    def _strip_values(cls, value: str) -> str:
-        return value.strip()
+    @field_validator("skills", "preferred_locations", "industries", mode="before")
+    @classmethod
+    def _strip_values(cls, value: Optional[List[str]]) -> Optional[List[str]]:
+        if value is None:
+            return value
+        if isinstance(value, list):
+            return [item.strip() if isinstance(item, str) else item for item in value]
+        return value
 
 
 class JobPosting(BaseModel):
@@ -82,22 +87,30 @@ class JobPosting(BaseModel):
         description="Industries associated with the job or company",
     )
 
-    @validator("required_skills", "nice_to_have_skills", "industries")
-    def _strip_and_dedupe(cls, values: List[str]) -> List[str]:
-        seen: Dict[str, None] = {}
+    @field_validator("required_skills", "nice_to_have_skills", "industries", mode="before")
+    @classmethod
+    def _strip_and_dedupe(cls, values: Optional[List[str]]) -> Optional[List[str]]:
+        if values is None:
+            return None
+        if not isinstance(values, list):
+            return values
+        seen = set()
         ordered_unique = []
         for item in values:
-            normalized = item.strip()
-            if normalized and normalized.lower() not in seen:
-                ordered_unique.append(normalized)
-                seen[normalized.lower()] = None
+            normalized = item.strip() if isinstance(item, str) else item
+            if isinstance(normalized, str) and normalized:
+                key = normalized.lower()
+                if key not in seen:
+                    ordered_unique.append(normalized)
+                    seen.add(key)
         return ordered_unique
 
-    @validator("salary_max")
+    @field_validator("salary_max")
+    @classmethod
     def _ensure_salary_range(
-        cls, salary_max: Optional[int], values: Dict[str, Optional[int]]
+        cls, salary_max: Optional[int], info: ValidationInfo
     ) -> Optional[int]:
-        salary_min = values.get("salary_min")
+        salary_min = info.data.get("salary_min") if info.data else None
         if salary_max is not None and salary_min is not None:
             if salary_max < salary_min:
                 raise ValueError("salary_max cannot be lower than salary_min")
@@ -137,11 +150,17 @@ class CandidateMatches(BaseModel):
 class MatchingWeights(BaseModel):
     """Weights applied to each scoring component."""
 
-    skills: float = 0.45
-    experience: float = 0.2
-    salary: float = 0.15
-    location: float = 0.1
-    industry: float = 0.1
+    skills: float = Field(0.45, ge=0)
+    experience: float = Field(0.2, ge=0)
+    salary: float = Field(0.15, ge=0)
+    location: float = Field(0.1, ge=0)
+    industry: float = Field(0.1, ge=0)
+
+    @model_validator(mode="after")
+    def _ensure_positive_total_weight(cls, weights: "MatchingWeights") -> "MatchingWeights":
+        if weights.total_weight <= 0:
+            raise ValueError("total_weight must be greater than 0")
+        return weights
 
     @property
     def total_weight(self) -> float:

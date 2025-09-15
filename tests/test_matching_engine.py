@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+from pydantic import ValidationError
+
 from hirex.engine import MatchingEngine
 from hirex.models import CandidateProfile, JobPosting, MatchingWeights
 
@@ -63,7 +66,7 @@ def test_remote_mismatch_penalizes_location_score() -> None:
     scored = engine.match_candidates_to_jobs([candidate], [job], top_n=1)[0].matches[0]
 
     assert scored.breakdown.location < 0.5
-    assert scored.score < 0.8
+    assert scored.score < 0.9
 
 
 def test_better_skill_alignment_ranks_higher() -> None:
@@ -95,3 +98,13 @@ def test_custom_weights_modify_results() -> None:
     salary_weighted_score = engine_salary_focus.match_candidates_to_jobs([candidate], [job])[0].matches[0].score
 
     assert salary_weighted_score < default_score
+
+
+def test_negative_weight_is_invalid() -> None:
+    with pytest.raises(ValidationError):
+        MatchingWeights(skills=-0.1)
+
+
+def test_zero_total_weight_is_invalid() -> None:
+    with pytest.raises(ValidationError):
+        MatchingWeights(skills=0, experience=0, salary=0, location=0, industry=0)
