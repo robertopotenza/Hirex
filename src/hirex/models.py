@@ -7,6 +7,16 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
 
+class RoleExperience(BaseModel):
+    """Represents a single role/position in a candidate's work history."""
+    
+    title: str = Field(..., description="Job title or role name")
+    duration_years: float = Field(..., ge=0, description="Duration of the role in years")
+    description: Optional[str] = Field(default=None, description="Role description or responsibilities")
+    start_year: Optional[int] = Field(default=None, description="Start year of the role")
+    end_year: Optional[int] = Field(default=None, description="End year of the role (None if current)")
+
+
 class CandidateProfile(BaseModel):
     """Represents a job seeker profile."""
 
@@ -34,6 +44,24 @@ class CandidateProfile(BaseModel):
     industries: List[str] = Field(
         default_factory=list,
         description="Industries the candidate has prior experience in",
+    )
+    roles: List[RoleExperience] = Field(
+        default_factory=list,
+        description="Detailed work history with role-level experience",
+    )
+    relevant_years: float = Field(
+        default=0.0,
+        ge=0,
+        description="Total years of relevant experience (computed per job)",
+    )
+    recent_relevant_years: float = Field(
+        default=0.0,
+        ge=0,
+        description="Years of relevant experience in recent period (default: last 5 years)",
+    )
+    seniority: Optional[str] = Field(
+        default=None,
+        description="Inferred seniority level based on role titles (e.g., 'Senior', 'Lead', 'Junior')",
     )
 
     @field_validator("skills", "preferred_locations", "industries", mode="before")
@@ -175,4 +203,5 @@ __all__ = [
     "JobPosting",
     "MatchBreakdown",
     "MatchingWeights",
+    "RoleExperience",
 ]
