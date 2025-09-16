@@ -2,13 +2,14 @@
 
 import re
 import uuid
+from datetime import datetime
 from io import BytesIO
 from typing import List, Optional
 
 import PyPDF2
 from docx import Document
 
-from .models import CandidateProfile
+from .models import CandidateProfile, RoleExperience
 
 
 class ResumeParser:
@@ -33,6 +34,26 @@ class ResumeParser:
         years_experience = self._extract_experience(text)
         skills = self._extract_skills(text)
         
+        # Extract role-level experience
+        roles = self._extract_roles(text)
+        
+        # If role extraction failed, create a fallback role from basic experience
+        if not roles and years_experience > 0:
+            roles = [RoleExperience(
+                title="Unknown Role",
+                duration_years=float(years_experience),
+                description=None,
+                start_year=None,
+                end_year=None
+            )]
+        
+        # Compute seniority from roles
+        seniority = self._infer_seniority(roles)
+        
+        # Compute default relevant years (will be refined by engine per job)
+        total_years = sum(role.duration_years for role in roles)
+        recent_years = self._compute_recent_years(roles)
+        
         # Generate unique ID
         candidate_id = str(uuid.uuid4())[:8]
         
@@ -41,6 +62,10 @@ class ResumeParser:
             full_name=full_name,
             years_experience=years_experience,
             skills=skills,
+            roles=roles,
+            relevant_years=total_years,  # Default to all years; engine will refine per job
+            recent_relevant_years=recent_years,
+            seniority=seniority,
             # Set reasonable defaults for other fields
             desired_salary=None,
             preferred_locations=[],
@@ -194,3 +219,149 @@ class ResumeParser:
                         skills.append(skill.title())
         
         return skills[:10]  # Limit extracted skills
+    
+    def _extract_roles(self, text: str) -> List[RoleExperience]:
+        """Extract role-level experience with date ranges from resume text."""
+        roles = []
+        lines = text.split('\n')
+        current_year = datetime.now().year
+        
+        # Date patterns to match various formats
+        date_patterns = [
+            r'(\w+)\s+(\d{4})\s*[-–—]\s*(\w+)\s+(\d{4})',  # "Jan 2018 - Feb 2021"
+            r'(\d{4})\s*[-–—]\s*(\d{4})',  # "2018 - 2021"
+            r'(\w+)\s+(\d{4})\s*[-–—]\s*(present|current)',  # "Jan 2018 - Present"
+            r'(\d{4})\s*[-–—]\s*(present|current)',  # "2018 - Present"
+            r'(\d{4})\s*[-–—]\s*(\d{4})',  # "2018-2021"
+        ]
+        
+        for i, line in enumerate(lines):
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Look for date ranges in the line
+            for pattern in date_patterns:
+                matches = re.findall(pattern, line, re.IGNORECASE)
+                if matches:
+                    # Found a date range, extract role info
+                    match = matches[0]
+                    start_year, end_year, duration = self._parse_date_range(match, current_year)
+                    
+                    if duration <= 0:
+                        continue
+                    
+                    # Find the role title (previous non-empty line)
+                    role_title = "Unknown Role"
+                    for j in range(i - 1, max(-1, i - 5), -1):
+                        prev_line = lines[j].strip()
+                        if prev_line and not any(re.search(pat, prev_line, re.IGNORECASE) for pat in date_patterns):
+                            role_title = prev_line
+                            break
+                    
+                    # Find role description (following lines until next date or section)
+                    description_lines = []
+                    for j in range(i + 1, min(len(lines), i + 10)):
+                        desc_line = lines[j].strip()
+                        if not desc_line:
+                            continue
+                        if any(re.search(pat, desc_line, re.IGNORECASE) for pat in date_patterns):
+                            break
+                        if desc_line.lower().startswith(('education', 'skills', 'projects')):
+                            break
+                        description_lines.append(desc_line)
+                    
+                    description = ' '.join(description_lines) if description_lines else None
+                    
+                    roles.append(RoleExperience(
+                        title=role_title,
+                        duration_years=duration,
+                        description=description,
+                        start_year=start_year,
+                        end_year=end_year
+                    ))
+                    break
+        
+        return roles
+    
+    def _parse_date_range(self, match: tuple, current_year: int) -> tuple[Optional[int], Optional[int], float]:
+        """Parse a date range match and return start_year, end_year, and duration."""
+        try:
+            if len(match) == 4:  # "Jan 2018 - Feb 2021" format
+                start_month, start_year_str, end_month, end_year_str = match
+                start_year = int(start_year_str)
+                if end_year_str.lower() in ['present', 'current']:
+                    end_year = None
+                    duration = current_year - start_year
+                else:
+                    end_year = int(end_year_str)
+                    duration = end_year - start_year
+            elif len(match) == 2:
+                if match[1].lower() in ['present', 'current']:  # "2018 - Present" format
+                    start_year = int(match[0])
+                    end_year = None
+                    duration = current_year - start_year
+                else:  # "2018 - 2021" format
+                    start_year = int(match[0])
+                    end_year = int(match[1])
+                    duration = end_year - start_year
+            else:
+                return None, None, 0.0
+            
+            return start_year, end_year, max(0.0, float(duration))
+        except (ValueError, IndexError):
+            return None, None, 0.0
+    
+    def _infer_seniority(self, roles: List[RoleExperience]) -> Optional[str]:
+        """Infer seniority level from role titles."""
+        if not roles:
+            return None
+        
+        # Check most recent role first, then others
+        all_titles = ' '.join(role.title.lower() for role in roles)
+        
+        if any(term in all_titles for term in ['lead', 'principal', 'architect', 'director', 'vp', 'head']):
+            return 'Lead'
+        elif any(term in all_titles for term in ['senior', 'sr']):
+            return 'Senior'
+        elif any(term in all_titles for term in ['junior', 'jr', 'associate', 'intern']):
+            return 'Junior'
+        elif any(term in all_titles for term in ['manager', 'supervisor']):
+            return 'Manager'
+        else:
+            # Infer from total experience
+            total_experience = sum(role.duration_years for role in roles)
+            if total_experience >= 8:
+                return 'Senior'
+            elif total_experience >= 3:
+                return 'Mid-level'
+            else:
+                return 'Junior'
+    
+    def _compute_recent_years(self, roles: List[RoleExperience], window_years: int = 5) -> float:
+        """Compute years of experience within the recent time window."""
+        if not roles:
+            return 0.0
+        
+        current_year = datetime.now().year
+        cutoff_year = current_year - window_years
+        recent_years = 0.0
+        
+        for role in roles:
+            if role.start_year is None:
+                # If we don't have start year, assume the entire role is recent if it's short
+                if role.duration_years <= window_years:
+                    recent_years += role.duration_years
+                continue
+            
+            # Calculate overlap with recent window
+            role_end = role.end_year or current_year
+            role_start = role.start_year
+            
+            overlap_start = max(role_start, cutoff_year)
+            overlap_end = min(role_end, current_year)
+            
+            if overlap_start <= overlap_end:
+                recent_years += max(0.0, overlap_end - overlap_start)
+        
+        return recent_years

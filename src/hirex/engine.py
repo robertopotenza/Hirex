@@ -12,6 +12,7 @@ from .models import (
     JobPosting,
     MatchBreakdown,
     MatchingWeights,
+    RoleExperience,
 )
 
 
@@ -65,10 +66,13 @@ class MatchingEngine:
     def _score_candidate_for_job(
         self, candidate: CandidateProfile, job: JobPosting
     ) -> ScoredMatch:
+        # Compute role-level relevance for this specific job
+        relevant_years, recent_relevant_years = self._compute_relevant_years(candidate, job)
+        
         breakdown = MatchBreakdown(
             skills=self._skill_score(candidate.skills, job.required_skills, job.nice_to_have_skills),
             experience=self._experience_score(
-                candidate.years_experience, job.minimum_years_experience
+                candidate.years_experience, job.minimum_years_experience, relevant_years, recent_relevant_years
             ),
             salary=self._salary_score(candidate.desired_salary, job.salary_min, job.salary_max),
             location=self._location_score(
@@ -109,19 +113,126 @@ class MatchingEngine:
         return min(1.0, base_score + optional_bonus)
 
     def _experience_score(
-        self, candidate_years: int, job_minimum_years: int
+        self, candidate_years: int, job_minimum_years: int, 
+        relevant_years: float = None, recent_relevant_years: float = None
     ) -> float:
         if job_minimum_years <= 0:
             return 1.0
 
-        if candidate_years >= job_minimum_years:
-            surplus = candidate_years - job_minimum_years
-            surplus_ratio = surplus / max(job_minimum_years, 1)
-            return min(1.0, 0.7 + min(surplus_ratio, 1.0) * 0.3)
+        # Use blended years if relevance data is available
+        if relevant_years is not None and recent_relevant_years is not None:
+            # Prefer recent relevant experience over total relevant experience
+            blended_years = 0.75 * recent_relevant_years + 0.25 * relevant_years
+        else:
+            # Fallback to traditional experience scoring
+            blended_years = float(candidate_years)
 
-        deficit = job_minimum_years - candidate_years
+        if blended_years >= job_minimum_years:
+            surplus = blended_years - job_minimum_years
+            surplus_ratio = surplus / max(job_minimum_years, 1)
+            return min(1.0, 0.7 + min(surplus_ratio, 1.0) * 0.3)  # Keep original baseline
+
+        deficit = job_minimum_years - blended_years
         penalty = deficit / (job_minimum_years + 1)
         return max(0.0, 0.7 - penalty)
+    
+    def _compute_relevant_years(self, candidate: CandidateProfile, job: JobPosting) -> tuple[float, float]:
+        """Compute role-level relevance for a specific job."""
+        if not candidate.roles:
+            # Fallback to basic experience if no roles available
+            # Assume all experience is recent for backward compatibility
+            years = float(candidate.years_experience)
+            recent = min(years, 5.0)  # Cap recent at 5 years window
+            return years, recent
+        
+        relevant_years = 0.0
+        recent_relevant_years = 0.0
+        recent_cutoff_years = 5  # Recent window
+        
+        # Normalize job requirements for matching
+        job_title_tokens = _normalized_set(job.title.split())
+        job_skills = _normalized_set(job.required_skills)
+        candidate_skills = _normalized_set(candidate.skills)
+        
+        for role in candidate.roles:
+            # Compute title match (exact token overlap)
+            role_title_tokens = _normalized_set(role.title.split())
+            title_match = 1.0 if job_title_tokens & role_title_tokens else 0.0
+            
+            # Enhanced skill overlap computation
+            skill_overlap = 0.0
+            if job_skills:
+                # Base skill overlap from candidate's global skills
+                base_overlap = len(candidate_skills & job_skills) / len(job_skills)
+                
+                # Role-specific skill bonus: extract skills from role title and description
+                role_text = role.title.lower()
+                if role.description:
+                    role_text += " " + role.description.lower()
+                
+                role_specific_skills = set()
+                for skill in job_skills:
+                    if skill in role_text:
+                        role_specific_skills.add(skill)
+                
+                # Boost overlap if role mentions specific job skills
+                role_skill_bonus = len(role_specific_skills) / len(job_skills) if job_skills else 0.0
+                
+                # Combine base overlap with role-specific bonus (weighted)
+                skill_overlap = 0.7 * base_overlap + 0.3 * role_skill_bonus
+            
+            # Domain relevance: boost if role and job are in similar domains
+            domain_boost = 0.0
+            if self._roles_in_similar_domain(role, job):
+                domain_boost = 0.2
+            
+            # Role relevance is the maximum of title match and skill overlap, plus domain boost
+            role_relevance = min(1.0, max(title_match, skill_overlap) + domain_boost)
+            
+            # Add to relevant years weighted by relevance
+            relevant_years += role.duration_years * role_relevance
+            
+            # Compute recent relevant years (overlap with last N years)
+            if role.start_year is not None:
+                from datetime import datetime
+                current_year = datetime.now().year
+                recent_start = max(role.start_year, current_year - recent_cutoff_years)
+                recent_end = min(role.end_year or current_year, current_year)
+                
+                if recent_start <= recent_end:
+                    recent_duration = recent_end - recent_start
+                    recent_relevant_years += recent_duration * role_relevance
+            else:
+                # If no start year, assume the role overlaps with recent period proportionally
+                if role.duration_years <= recent_cutoff_years:
+                    recent_relevant_years += role.duration_years * role_relevance
+        
+        return relevant_years, recent_relevant_years
+    
+    def _roles_in_similar_domain(self, role: RoleExperience, job: JobPosting) -> bool:
+        """Check if a role and job are in similar domains."""
+        role_text = (role.title + " " + (role.description or "")).lower()
+        job_text = (job.title + " " + " ".join(job.required_skills)).lower()
+        
+        # Define domain keywords
+        domains = {
+            'backend': ['backend', 'api', 'server', 'database', 'microservice'],
+            'frontend': ['frontend', 'ui', 'react', 'angular', 'vue', 'html', 'css'],
+            'data': ['data', 'analytics', 'science', 'analyst', 'ml', 'ai'],
+            'devops': ['devops', 'infrastructure', 'cloud', 'aws', 'docker', 'kubernetes'],
+            'mobile': ['mobile', 'ios', 'android', 'app'],
+        }
+        
+        role_domains = set()
+        job_domains = set()
+        
+        for domain, keywords in domains.items():
+            if any(keyword in role_text for keyword in keywords):
+                role_domains.add(domain)
+            if any(keyword in job_text for keyword in keywords):
+                job_domains.add(domain)
+        
+        return bool(role_domains & job_domains)
 
     def _salary_score(
         self,
