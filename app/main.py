@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import os
 from typing import List, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from hirex.engine import MatchingEngine
@@ -18,6 +21,10 @@ app = FastAPI(
     ),
     version="0.1.0",
 )
+
+# Setup templates
+templates_dir = os.path.join(os.path.dirname(__file__), "templates")
+templates = Jinja2Templates(directory=templates_dir)
 
 _default_engine = MatchingEngine()
 
@@ -36,15 +43,16 @@ class MatchResponse(BaseModel):
     results: List[CandidateMatches]
 
 
-@app.get("/", summary="API information")
-async def root() -> dict[str, str]:
-    return {
+@app.get("/", response_class=HTMLResponse, summary="API interface")
+async def root(request: Request) -> HTMLResponse:
+    context = {
         "name": "Hirex Matching API",
         "version": "0.1.0",
         "description": "Suggest job matches for candidate profiles using weighted heuristic scoring",
         "docs": "/docs",
         "health": "/health"
     }
+    return templates.TemplateResponse(request, "index.html", context)
 
 
 @app.get("/favicon.ico", include_in_schema=False)

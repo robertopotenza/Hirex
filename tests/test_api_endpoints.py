@@ -310,6 +310,23 @@ def test_health_endpoint_reports_ok() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_root_endpoint_returns_html_interface() -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    content_type = response.headers.get("content-type", "")
+    assert "text/html" in content_type
+    
+    # Check that the HTML contains expected content
+    html_content = response.text
+    assert "Hirex" in html_content
+    assert "Intelligent Job Matching API" in html_content
+    assert "v0.1.0" in html_content
+    assert "API Documentation" in html_content
+    assert "Health Check" in html_content
+    assert "Key Features" in html_content
+
+
 def test_match_endpoint_returns_matching_engine_results() -> None:
     candidate_payload = _candidate_payload()
     job_payload = _job_payload()
