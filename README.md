@@ -17,6 +17,7 @@ Create a virtual environment (recommended) and install project requirements:
 
 ```bash
 pip install -r requirements.txt
+pip install -e .
 ```
 
 ### 2. Run the API locally
