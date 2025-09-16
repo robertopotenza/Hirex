@@ -438,3 +438,13 @@ def test_match_endpoint_applies_custom_weights() -> None:
     assert match_json["breakdown"]["industry"] == pytest.approx(
         expected_custom_match.breakdown.industry
     )
+
+
+def test_skills_dashboard_endpoint_returns_html() -> None:
+    """Test that the skills dashboard endpoint serves HTML interface."""
+    response = client.get("/skills-dashboard")
+    
+    assert response.status_code == 200
+    assert "text/html" in response.headers.get("content-type", "")
+    assert "Skills Dashboard" in response.text
+    assert "Skills Analysis Dashboard" in response.text
