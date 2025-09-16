@@ -36,6 +36,22 @@ class MatchResponse(BaseModel):
     results: List[CandidateMatches]
 
 
+@app.get("/", summary="API information")
+async def root() -> dict[str, str]:
+    return {
+        "name": "Hirex Matching API",
+        "version": "0.1.0",
+        "description": "Suggest job matches for candidate profiles using weighted heuristic scoring",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return {"message": "No favicon available for this API"}
+
+
 @app.get("/health", summary="Service health probe")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
