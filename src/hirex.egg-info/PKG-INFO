@@ -1,0 +1,6 @@
+Metadata-Version: 2.1
+Name: hirex
+Version: 0.1.0
+Summary: Job matching engine for candidates and job postings
+Author: Hirex Team
+Requires-Python: >=3.8
