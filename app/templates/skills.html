@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LinkedIn Job Matcher - Hirex</title>
+    <title>Skills Dashboard - Hirex</title>
     <style>
         * {
             margin: 0;
@@ -38,6 +38,19 @@
         .tagline {
             font-size: 1.2rem;
             opacity: 0.9;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .back-link:hover {
+            opacity: 0.8;
         }
         
         .main-card {
@@ -177,24 +190,107 @@
             display: block;
         }
         
-        .job-match {
+        .skills-section {
             background: white;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             padding: 25px;
             margin-bottom: 20px;
-            border-left: 4px solid #667eea;
         }
         
-        .job-header {
+        .skills-header {
             display: flex;
-            justify-content: space-between;
-            align-items: start;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .skills-icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+        
+        .skills-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .skill-category {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .category-title {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .skills-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .skill-tag {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .skill-tag.required {
+            background: #e53e3e;
+        }
+        
+        .skill-tag.nice-to-have {
+            background: #38a169;
+        }
+        
+        .candidate-info {
+            background: #e6fffa;
+            border-left: 4px solid #38a169;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        
+        .candidate-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2d5a5a;
+            margin-bottom: 5px;
+        }
+        
+        .candidate-details {
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+        
+        .job-card {
+            background: #fff5ee;
+            border-left: 4px solid #667eea;
+            border-radius: 8px;
+            padding: 20px;
             margin-bottom: 15px;
         }
         
         .job-title {
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             font-weight: 600;
             color: #333;
             margin-bottom: 5px;
@@ -203,47 +299,7 @@
         .job-company {
             color: #667eea;
             font-weight: 500;
-        }
-        
-        .score {
-            text-align: right;
-        }
-        
-        .score-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #38a169;
-        }
-        
-        .score-label {
-            font-size: 0.9rem;
-            color: #666;
-        }
-        
-        .breakdown {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-        
-        .breakdown-item {
-            text-align: center;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 6px;
-        }
-        
-        .breakdown-value {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #667eea;
-        }
-        
-        .breakdown-label {
-            font-size: 0.85rem;
-            color: #666;
-            margin-top: 5px;
+            margin-bottom: 15px;
         }
         
         .error {
@@ -260,19 +316,6 @@
             display: block;
         }
         
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            color: white;
-            text-decoration: none;
-            margin-bottom: 20px;
-            font-weight: 500;
-        }
-        
-        .back-link:hover {
-            opacity: 0.8;
-        }
-        
         @media (max-width: 768px) {
             .main-card {
                 padding: 20px;
@@ -282,18 +325,8 @@
                 font-size: 2rem;
             }
             
-            .breakdown {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .job-header {
-                flex-direction: column;
-                align-items: start;
-            }
-            
-            .score {
-                text-align: left;
-                margin-top: 10px;
+            .skills-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -302,15 +335,15 @@
     <div class="container">
         <div class="header">
             <div class="logo">Hirex</div>
-            <div class="tagline">LinkedIn Job Matching</div>
+            <div class="tagline">Skills Dashboard</div>
         </div>
         
         <a href="/" class="back-link">← Back to API Home</a>
         
         <div class="main-card">
-            <h2 class="section-title">📄 Upload Your Resume</h2>
+            <h2 class="section-title">📊 Skills Analysis Dashboard</h2>
             
-            <form id="matchingForm">
+            <form id="skillsForm">
                 <div class="form-group">
                     <label class="form-label" for="resume">Resume (PDF or DOCX)</label>
                     <div class="file-upload" id="resumeUpload">
@@ -321,10 +354,8 @@
                     </div>
                 </div>
                 
-                <h2 class="section-title">🔗 LinkedIn Job URLs</h2>
-                
                 <div class="form-group">
-                    <label class="form-label" for="jobUrls">Job Post URLs (one per line)</label>
+                    <label class="form-label" for="jobUrls">LinkedIn Job URLs (one per line)</label>
                     <textarea 
                         id="jobUrls" 
                         name="jobUrls" 
@@ -336,7 +367,7 @@ https://www.linkedin.com/jobs/view/0987654321"
                 </div>
                 
                 <button type="submit" class="btn" id="submitBtn">
-                    🚀 Analyze Job Compatibility
+                    🔍 Analyze Skills
                 </button>
             </form>
         </div>
@@ -345,28 +376,42 @@ https://www.linkedin.com/jobs/view/0987654321"
         
         <div class="loading" id="loadingMessage">
             <div class="spinner"></div>
-            <p>Analyzing your resume and job postings...</p>
+            <p>Extracting skills from resume and job postings...</p>
             <p style="font-size: 0.9rem; margin-top: 10px; opacity: 0.7;">This may take a moment</p>
         </div>
         
         <div class="results" id="results">
-            <div class="main-card">
-                <h2 class="section-title">🎯 Compatibility Results</h2>
-                <div id="jobMatches"></div>
+            <div class="skills-section">
+                <div class="skills-header">
+                    <span class="skills-icon">👤</span>
+                    <span class="skills-title">Candidate Skills</span>
+                </div>
+                <div id="candidateInfo"></div>
+                <div id="candidateSkills"></div>
+            </div>
+            
+            <div class="skills-section">
+                <div class="skills-header">
+                    <span class="skills-icon">💼</span>
+                    <span class="skills-title">Job Requirements</span>
+                </div>
+                <div id="jobSkills"></div>
             </div>
         </div>
     </div>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('matchingForm');
+            const form = document.getElementById('skillsForm');
             const resumeInput = document.getElementById('resume');
             const resumeUpload = document.getElementById('resumeUpload');
             const submitBtn = document.getElementById('submitBtn');
             const loading = document.getElementById('loadingMessage');
             const results = document.getElementById('results');
             const errorMessage = document.getElementById('errorMessage');
-            const jobMatchesContainer = document.getElementById('jobMatches');
+            const candidateInfo = document.getElementById('candidateInfo');
+            const candidateSkills = document.getElementById('candidateSkills');
+            const jobSkills = document.getElementById('jobSkills');
             
             // Handle file upload visual feedback
             resumeInput.addEventListener('change', function() {
@@ -403,11 +448,11 @@ https://www.linkedin.com/jobs/view/0987654321"
                     
                     if (!response.ok) {
                         const errorData = await response.json();
-                        throw new Error(errorData.detail || 'Failed to analyze jobs');
+                        throw new Error(errorData.detail || 'Failed to analyze skills');
                     }
                     
                     const data = await response.json();
-                    displayResults(data);
+                    displaySkillsResults(data);
                     
                 } catch (error) {
                     showError(error.message);
@@ -417,99 +462,88 @@ https://www.linkedin.com/jobs/view/0987654321"
                 }
             });
             
-            function displayResults(data) {
-                jobMatchesContainer.innerHTML = '';
+            function displaySkillsResults(data) {
+                candidateInfo.innerHTML = '';
+                candidateSkills.innerHTML = '';
+                jobSkills.innerHTML = '';
                 
                 if (!data.results || data.results.length === 0) {
-                    showError('No job matches found');
+                    showError('No data found');
                     return;
                 }
                 
-                const candidate = data.results[0];
+                const candidate = data.results[0].candidate;
                 
-                // Add candidate skills section at the top
-                if (candidate.candidate.skills && candidate.candidate.skills.length > 0) {
-                    const candidateSkillsDiv = document.createElement('div');
-                    candidateSkillsDiv.className = 'job-match';
-                    candidateSkillsDiv.style.borderLeftColor = '#38a169';
-                    candidateSkillsDiv.innerHTML = `
-                        <div class="job-header">
-                            <div>
-                                <div class="job-title">👤 ${candidate.candidate.full_name}</div>
-                                <div class="job-company">${candidate.candidate.years_experience} years experience</div>
-                            </div>
+                // Display candidate information
+                candidateInfo.innerHTML = `
+                    <div class="candidate-info">
+                        <div class="candidate-name">${candidate.full_name}</div>
+                        <div class="candidate-details">
+                            ${candidate.years_experience} years experience • 
+                            ${candidate.skills.length} skills identified
                         </div>
-                        <div style="margin-top: 15px;">
-                            <strong>Your Skills (${candidate.candidate.skills.length}):</strong>
-                            <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px;">
-                                ${candidate.candidate.skills.map(skill => 
-                                    `<span style="background: #38a169; color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.85rem;">${skill}</span>`
+                    </div>
+                `;
+                
+                // Display candidate skills
+                if (candidate.skills.length > 0) {
+                    candidateSkills.innerHTML = `
+                        <div class="skill-category">
+                            <div class="category-title">Technical Skills (${candidate.skills.length})</div>
+                            <div class="skills-list">
+                                ${candidate.skills.map(skill => 
+                                    `<span class="skill-tag">${skill}</span>`
                                 ).join('')}
                             </div>
                         </div>
                     `;
-                    jobMatchesContainer.appendChild(candidateSkillsDiv);
+                } else {
+                    candidateSkills.innerHTML = `
+                        <div class="skill-category">
+                            <div class="category-title">No skills detected</div>
+                            <p style="color: #666; font-style: italic;">No technical skills were found in the resume. Consider adding a skills section or updating your resume.</p>
+                        </div>
+                    `;
                 }
                 
-                candidate.matches.forEach(match => {
-                    const jobDiv = document.createElement('div');
-                    jobDiv.className = 'job-match';
-                    
-                    const scorePercentage = Math.round(match.score * 100);
-                    const scoreColor = scorePercentage >= 80 ? '#38a169' : 
-                                     scorePercentage >= 60 ? '#d69e2e' : '#e53e3e';
-                    
-                    jobDiv.innerHTML = `
-                        <div class="job-header">
-                            <div>
-                                <div class="job-title">${match.job.title}</div>
-                                <div class="job-company">${match.job.company || 'Company not specified'}</div>
-                                ${match.job.location ? `<div style="color: #666; margin-top: 5px;">📍 ${match.job.location}</div>` : ''}
-                            </div>
-                            <div class="score">
-                                <div class="score-value" style="color: ${scoreColor}">${scorePercentage}%</div>
-                                <div class="score-label">Match Score</div>
-                            </div>
+                // Display job skills for each job
+                const jobs = data.results[0].matches;
+                if (jobs.length > 0) {
+                    jobSkills.innerHTML = jobs.map(match => `
+                        <div class="job-card">
+                            <div class="job-title">${match.job.title}</div>
+                            <div class="job-company">${match.job.company || 'Company not specified'}</div>
+                            
+                            ${match.job.required_skills.length > 0 ? `
+                                <div style="margin-bottom: 15px;">
+                                    <div class="category-title">Required Skills (${match.job.required_skills.length})</div>
+                                    <div class="skills-list">
+                                        ${match.job.required_skills.map(skill => 
+                                            `<span class="skill-tag required">${skill}</span>`
+                                        ).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${match.job.nice_to_have_skills.length > 0 ? `
+                                <div>
+                                    <div class="category-title">Nice to Have (${match.job.nice_to_have_skills.length})</div>
+                                    <div class="skills-list">
+                                        ${match.job.nice_to_have_skills.map(skill => 
+                                            `<span class="skill-tag nice-to-have">${skill}</span>`
+                                        ).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${match.job.required_skills.length === 0 && match.job.nice_to_have_skills.length === 0 ? `
+                                <p style="color: #666; font-style: italic;">No specific skills requirements found for this job posting.</p>
+                            ` : ''}
                         </div>
-                        
-                        <div class="breakdown">
-                            <div class="breakdown-item">
-                                <div class="breakdown-value">${Math.round(match.breakdown.skills * 100)}%</div>
-                                <div class="breakdown-label">Skills</div>
-                            </div>
-                            <div class="breakdown-item">
-                                <div class="breakdown-value">${Math.round(match.breakdown.experience * 100)}%</div>
-                                <div class="breakdown-label">Experience</div>
-                            </div>
-                            <div class="breakdown-item">
-                                <div class="breakdown-value">${Math.round(match.breakdown.salary * 100)}%</div>
-                                <div class="breakdown-label">Salary</div>
-                            </div>
-                            <div class="breakdown-item">
-                                <div class="breakdown-value">${Math.round(match.breakdown.location * 100)}%</div>
-                                <div class="breakdown-label">Location</div>
-                            </div>
-                            <div class="breakdown-item">
-                                <div class="breakdown-value">${Math.round(match.breakdown.industry * 100)}%</div>
-                                <div class="breakdown-label">Industry</div>
-                            </div>
-                        </div>
-                        
-                        ${match.job.required_skills.length > 0 ? `
-                            <div style="margin-top: 20px;">
-                                <strong>Required Skills:</strong> ${match.job.required_skills.join(', ')}
-                            </div>
-                        ` : ''}
-                        
-                        ${match.job.nice_to_have_skills.length > 0 ? `
-                            <div style="margin-top: 10px;">
-                                <strong>Nice to Have:</strong> ${match.job.nice_to_have_skills.join(', ')}
-                            </div>
-                        ` : ''}
-                    `;
-                    
-                    jobMatchesContainer.appendChild(jobDiv);
-                });
+                    `).join('');
+                } else {
+                    jobSkills.innerHTML = '<p style="color: #666; font-style: italic;">No job postings found.</p>';
+                }
                 
                 results.classList.add('show');
             }

@@ -88,6 +88,12 @@ async def matcher_ui(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "matcher.html", {})
 
 
+@app.get("/skills-dashboard", response_class=HTMLResponse, summary="Skills analysis dashboard")
+async def skills_dashboard(request: Request) -> HTMLResponse:
+    """Serve the skills analysis dashboard interface."""
+    return templates.TemplateResponse(request, "skills.html", {})
+
+
 @app.post("/analyze-jobs", response_model=MatchResponse, summary="Analyze LinkedIn jobs against resume")
 async def analyze_jobs(
     resume: UploadFile = File(..., description="Resume file (PDF or DOCX)"),
